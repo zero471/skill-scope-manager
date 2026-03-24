@@ -1,7 +1,7 @@
 interface:
   display_name: "Skill Scope Manager"
   short_description: "Manage scoped skills and broker one-time out-of-scope skill use"
-  default_prompt: "Use $skill-scope-manager to initialize, audit, query, manage scoped Codex skills, or temporarily invoke an out-of-scope skill with explicit user approval."
+  default_prompt: "Use $skill-scope-manager to initialize, audit, query, manage scoped skills, or temporarily invoke an out-of-scope skill with explicit user approval."
 
 policy:
   allow_implicit_invocation: true

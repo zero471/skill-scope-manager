@@ -1,6 +1,6 @@
 ---
 name: skill-scope-manager
-description: Manage scoped Codex skills across global and local `skills/` directories. Use when the user wants to initialize skill scoping, discover unregistered skills, add/remove/move a skill between scopes, locate the absolute path of a skill for editing, audit drift between disk and AGENTS.md, query which skills are installed and active in the current path, or temporarily invoke an out-of-scope skill by name or by capability description with explicit user approval.
+description: Manage scoped skills across global and local `skills/` directories. Use when the user wants to initialize skill scoping, discover unregistered skills, add/remove/move a skill between scopes, locate the absolute path of a skill for editing, audit drift between disk and AGENTS.md, query which skills are installed and active in the current path, or temporarily invoke an out-of-scope skill by name or by capability description with explicit user approval.
 metadata:
   registry_yaml: registry/skill-registry.yaml
   registry_markdown: registry/skill-registry.md

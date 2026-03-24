@@ -269,7 +269,7 @@ def command_sync_agents(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Manage the scoped Codex skill registry.")
+    parser = argparse.ArgumentParser(description="Manage the scoped skill registry.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("list")
