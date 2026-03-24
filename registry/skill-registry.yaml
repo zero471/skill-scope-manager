@@ -1,0 +1,12 @@
+system_status:
+  registry_version: 1
+  bootstrap_complete: false
+  initialized_at: ''
+  last_audit_at: ''
+  notes: Template registry for a distributable skill copy. Run init-status, init-discover, init-preview, and init-apply on the target machine to initialize scopes.
+protected_skills:
+- skill-creator
+- skill-installer
+- skill-scope-manager
+scopes: []
+skills: []

@@ -1,0 +1,5 @@
+.DS_Store
+__pycache__/
+*.pyc
+registry/init-plan-*.yaml
+registry/init-plan-*.yml
