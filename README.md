@@ -1,8 +1,8 @@
 # Skill Scope Manager
 
-Chinese README: [Jump to Chinese](#readme-zh)
-
 Manage skill scope, initialization, migration preview, and one-time cross-scope skill borrowing for agent workspaces.
+
+| [中文文档](#readme-zh)
 
 ## Why this skill exists
 
@@ -55,15 +55,15 @@ Another advantage of storing skills inside working directories is portability ac
 This repository is the skill folder itself.
 
 1. Clone the repository.
-2. Copy `skill-scope-manager/` into your agent's global skills directory, for example:
+2. Copy `skill-scope-manager/` into your agent skill home. The target path should be provided by the user based on their own agent environment, for example:
 
 ```bash
 git clone <repo-url>
-cp -R skill-scope-manager "$CODEX_HOME/skills/"
+cp -R skill-scope-manager "<agent-skill-home>/skill-scope-manager"
 ```
 
-3. Declare the skill in your global `AGENTS.md` or equivalent skill manifest.
-4. Restart your agent runtime so the new skill metadata is loaded.
+3. Declare the skill in the skill manifest used by your agent, such as `AGENTS.md` if your agent supports it.
+4. Restart or reload your agent runtime so the new skill metadata is loaded.
 
 Notes:
 
@@ -193,7 +193,7 @@ It treats scope management as an ongoing maintenance workflow after initializati
 
 这个问题在个人工作区里会越来越明显，尤其是当你同时维护写作、研究、Obsidian、社交媒体、自动化等多个方向的 skill 时。
 
-实践上，一个比较健康的 **全局可见 skill 数量** 区间通常是 **20-40**。  
+实践上，一个比较健康的 **全局可见 skill 数量** 区间通常是 **20-40**。
 低于这个区间时，路由通常还比较简单；高于这个区间后，选择噪声和上下文负担往往增长得比收益更快。总安装 skill 数当然可以超过 40，但额外的 skill 更适合被**放到局部作用域里**，而不是一直保持全局可见。
 
 把 skill 存放在工作目录下还有一个优势：它更方便被不同的 agent 共同使用。只要不同 agent 进入同一个工作区并读取对应的 `AGENTS.md`，就可以复用同一套本地 skill，而不是把 skill 只安装并绑定到某一个特定 agent 的环境里。
@@ -236,15 +236,15 @@ It treats scope management as an ongoing maintenance workflow after initializati
 这个仓库本身就是 skill 目录。
 
 1. 克隆仓库
-2. 将 `skill-scope-manager/` 复制到全局 skills 目录，例如：
+2. 将 `skill-scope-manager/` 复制到你的 agent skill home。目标路径应由用户根据自己的 agent 环境提供，例如：
 
 ```bash
 git clone <repo-url>
-cp -R skill-scope-manager "$CODEX_HOME/skills/"
+cp -R skill-scope-manager "<agent-skill-home>/skill-scope-manager"
 ```
 
-3. 在全局 `AGENTS.md` 或等价的 skill manifest 中声明这个 skill
-4. 重启 agent runtime，让新的 skill metadata 生效
+3. 在你的 agent 使用的 skill manifest 中声明这个 skill；如果该 agent 支持 `AGENTS.md`，就写入对应的 `AGENTS.md`
+4. 重启或重新加载 agent runtime，让新的 skill metadata 生效
 
 说明：
 
