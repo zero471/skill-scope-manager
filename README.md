@@ -356,3 +356,7 @@ registry 里保存的是：
 - `sync-agents`
 
 也就是说，它把 scope 管理视作“初始化完成后的持续维护流程”。
+
+## License
+
+MIT
