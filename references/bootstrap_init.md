@@ -81,6 +81,7 @@ The preview must clearly show:
 - which scopes will be created or updated
 - which `skills/` directories will be created
 - which `AGENTS.md` files will be created or updated
+- that the global `AGENTS.md` guidance block will be created or refreshed
 - which skills will be moved
 - which skills will be copied
 - where the registry and registry markdown will be written
@@ -95,6 +96,7 @@ The preview plan is the source of truth for `init-apply`.
 - execute only the actions described in the plan file
 - write the registry
 - render the registry markdown
+- write or refresh the global `AGENTS.md` guidance block during initialization
 - sync the managed blocks in affected `AGENTS.md` files
 - set `bootstrap_complete` to true
 

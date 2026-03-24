@@ -13,6 +13,7 @@ from _scope_lib import (
     collect_audit_issues,
     cwd_active_scope_ids,
     discover_all_registry_skills,
+    drop_empty_skills,
     ensure_scope,
     ensure_skill_record,
     get_instance,
@@ -51,6 +52,7 @@ def print_where(registry: dict[str, Any], skill_name: str) -> None:
         print(f"- Scope: {instance['scope_root']}")
         print(f"  Dir: {instance['skill_dir']}")
         print(f"  SKILL.md: {instance['skill_md_path']}")
+        print(f"  Instance status: {instance.get('instance_status', 'active')}")
         print(f"  Protected: {instance['is_protected']}")
 
 
@@ -72,6 +74,10 @@ def print_audit(registry: dict[str, Any]) -> None:
     for issue in issues:
         detail = issue.get("path") or issue.get("skill") or ""
         print(f"- {issue['type']}: {detail}")
+    if any(issue["type"] == "unregistered_instance" for issue in issues):
+        print("")
+        print("Reminder: a skill folder can exist on disk before it is scope-managed.")
+        print("If you just created a new skill, register it so registry state and AGENTS.md stay in sync.")
 
 
 def print_discover(registry: dict[str, Any], unregistered_only: bool) -> None:
@@ -88,6 +94,10 @@ def print_discover(registry: dict[str, Any], unregistered_only: bool) -> None:
         return
     for item in discovered:
         print(f"- {item['name']}: {item['skill_dir']} -> {item['scope_root']}")
+    if unregistered_only:
+        print("")
+        print("Reminder: newly created skills are not managed until you register them.")
+        print("Next step: run register in preview mode first, then rerun with --apply.")
 
 
 def print_borrow_preview(registry: dict[str, Any], query: str, cwd: str) -> None:
@@ -146,6 +156,7 @@ def command_register(args: argparse.Namespace) -> None:
         print("Action: move skill directory into target scope")
     else:
         print("Action: register in place")
+    print("Reminder: a new skill is not scope-managed until register is applied.")
     if not args.apply:
         return
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -202,8 +213,7 @@ def command_remove(args: argparse.Namespace) -> None:
         return
     shutil.rmtree(instance["skill_dir"])
     remove_instance(skill, target_scope)
-    drop_empty = [entry for entry in registry["skills"] if entry.get("instances")]
-    registry["skills"] = drop_empty
+    drop_empty_skills(registry)
     save_registry(registry)
     save_registry_markdown(registry)
     print(f"Removed {args.skill_name} from {target_scope}")
@@ -268,6 +278,52 @@ def command_sync_agents(args: argparse.Namespace) -> None:
         print(f"{action}: {scope['agents_path']}")
 
 
+def command_set_skill_status(args: argparse.Namespace, target_status: str) -> None:
+    registry = load_registry()
+    skill = get_skill_record(registry, args.skill_name)
+    if not skill:
+        raise SystemExit(f"Skill not found: {args.skill_name}")
+    if args.skill_name in registry.get("protected_skills", []):
+        raise SystemExit(f"Protected skill cannot be {args.command}d: {args.skill_name}")
+    if not skill.get("instances"):
+        raise SystemExit(f"Skill has no registered instances: {args.skill_name}")
+
+    current_status = skill["status"]
+    affected_scopes = sorted({instance["scope_root"] for instance in skill.get("instances", [])})
+    has_global_instance = any(bool(instance.get("is_global")) for instance in skill.get("instances", []))
+    print(f"{args.command.title()} skill: {skill['skill_name']}")
+    print(f"Current status: {current_status}")
+    print(f"Target status: {target_status}")
+    print(f"Affected scope count: {len(affected_scopes)}")
+    for scope_root in affected_scopes:
+        print(f"- {scope_root}")
+    if target_status == "disabled":
+        print("")
+        print("Disable checklist:")
+        print("1. Disable it here in skill-scope-manager so local scope resolution and AGENTS.md stop exposing it.")
+        print("2. Disable it in Codex system settings as well if you also want the client-level global skill list to stop surfacing it.")
+    if target_status == "active" and has_global_instance:
+        print("")
+        print("Enable checklist for global skills:")
+        print("1. Enable it here in skill-scope-manager so local scope resolution and AGENTS.md can expose it again.")
+        print("2. Enable it in Codex system settings as well if you also want the client-level global skill list to surface it again.")
+    if current_status == target_status:
+        print("Action: refresh normalized registry state and sync AGENTS.md")
+        if not args.apply:
+            return
+    else:
+        print("Action: update registry status and sync AGENTS.md for all scopes")
+        if not args.apply:
+            return
+        skill["status"] = target_status
+    skill["last_verified_at"] = now_iso()
+    save_registry(registry)
+    save_registry_markdown(registry)
+    for scope in registry.get("scopes", []):
+        sync_scope_agents(registry, scope, apply=True)
+    print(f"{args.command.title()}d {skill['skill_name']}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Manage the scoped skill registry.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -307,6 +363,14 @@ def build_parser() -> argparse.ArgumentParser:
     remove_parser.add_argument("--skill-name", required=True)
     remove_parser.add_argument("--scope-root")
     remove_parser.add_argument("--apply", action="store_true")
+
+    disable_parser = subparsers.add_parser("disable")
+    disable_parser.add_argument("--skill-name", required=True)
+    disable_parser.add_argument("--apply", action="store_true")
+
+    enable_parser = subparsers.add_parser("enable")
+    enable_parser.add_argument("--skill-name", required=True)
+    enable_parser.add_argument("--apply", action="store_true")
 
     move_parser = subparsers.add_parser("move")
     move_parser.add_argument("--skill-name", required=True)
@@ -351,6 +415,10 @@ def main() -> None:
         command_register(args)
     elif args.command == "remove":
         command_remove(args)
+    elif args.command == "disable":
+        command_set_skill_status(args, "disabled")
+    elif args.command == "enable":
+        command_set_skill_status(args, "active")
     elif args.command == "move":
         command_move(args)
     elif args.command == "sync-agents":

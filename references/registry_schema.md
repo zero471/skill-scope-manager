@@ -48,6 +48,13 @@ Required fields:
 - `last_verified_at`
 - `instances`
 
+`status` is the global availability switch for the skill record.
+
+Allowed values:
+
+- `active`
+- `disabled`
+
 ## `instances`
 
 Each instance represents one scoped copy of the skill.
@@ -64,9 +71,19 @@ Required fields:
 - `is_global`
 - `is_protected`
 
+`instance_status` is installation metadata for the scoped copy. In the current lightweight model, global enable/disable is controlled by the parent skill record's `status`, while `AGENTS.md` only reflects active skills after registry sync.
+
 ## Same-name multi-scope rule
 
 If the same `skill_name` appears in multiple scopes, store it as one skill record with multiple `instances`. This means the skill is active in all of those scopes.
+
+## Disable model
+
+- Keep enable/disable state in `skills[].status`
+- Do not store disabled markers in `AGENTS.md`
+- Treat `AGENTS.md` as a generated projection of active skills only
+- Use `disable` / `enable` for recoverable switching
+- Use `remove` only for deleting the scoped copy itself
 
 ## Temporary cross-scope invocation
 

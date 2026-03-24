@@ -14,6 +14,11 @@ REGISTRY_YAML = SKILL_ROOT / "registry" / "skill-registry.yaml"
 REGISTRY_MD = SKILL_ROOT / "registry" / "skill-registry.md"
 MANAGED_BEGIN = "<!-- skill-scope-manager:begin -->"
 MANAGED_END = "<!-- skill-scope-manager:end -->"
+GLOBAL_GUIDANCE_BEGIN = "<!-- skill-scope-manager:global-guidance:begin -->"
+GLOBAL_GUIDANCE_END = "<!-- skill-scope-manager:global-guidance:end -->"
+SKILL_STATUS_ACTIVE = "active"
+SKILL_STATUS_DISABLED = "disabled"
+INSTANCE_STATUS_ACTIVE = "active"
 PROTECTED_SKILL_NAMES = [
     "skill-creator",
     "skill-installer",
@@ -35,6 +40,28 @@ def default_agent_home() -> str:
     return normalize_path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
 
 
+def canonical_skill_status(value: Any) -> str:
+    return SKILL_STATUS_ACTIVE if str(value).strip().lower() == SKILL_STATUS_ACTIVE else SKILL_STATUS_DISABLED
+
+
+def instance_is_active(instance: dict[str, Any]) -> bool:
+    return str(instance.get("instance_status", "")).strip().lower() == INSTANCE_STATUS_ACTIVE
+
+
+def skill_is_active(skill_record: dict[str, Any]) -> bool:
+    return canonical_skill_status(skill_record.get("status")) == SKILL_STATUS_ACTIVE
+
+
+def normalize_registry_statuses(registry: dict[str, Any]) -> None:
+    for skill in registry.get("skills", []):
+        skill["status"] = canonical_skill_status(skill.get("status"))
+        instances = skill.get("instances", [])
+        if skill["status"] == SKILL_STATUS_DISABLED and instances and not any(instance_is_active(instance) for instance in instances):
+            # Migrate legacy "archived everywhere" records to the new global disable model.
+            for instance in instances:
+                instance["instance_status"] = INSTANCE_STATUS_ACTIVE
+
+
 def protected_skill_dirs_for_scope(scope: dict[str, Any]) -> list[Path]:
     if scope.get("scope_type") != "global":
         return []
@@ -50,10 +77,12 @@ def load_registry(path: Path = REGISTRY_YAML) -> dict[str, Any]:
     data.setdefault("protected_skills", [])
     data.setdefault("scopes", [])
     data.setdefault("skills", [])
+    normalize_registry_statuses(data)
     return data
 
 
 def save_registry(data: dict[str, Any], path: Path = REGISTRY_YAML) -> None:
+    normalize_registry_statuses(data)
     with path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(
             data,
@@ -207,11 +236,16 @@ def upsert_instance(skill_record: dict[str, Any], instance: dict[str, Any]) -> N
         skill_record.setdefault("instances", []).append(instance)
         skill_record["instances"] = sorted(skill_record["instances"], key=lambda item: item["scope_root"])
     skill_record["last_verified_at"] = now_iso()
-    skill_record["status"] = "active" if active_instances(skill_record) else "archived"
+    if canonical_skill_status(skill_record.get("status")) == SKILL_STATUS_ACTIVE:
+        skill_record["status"] = SKILL_STATUS_ACTIVE if any(instance_is_active(item) for item in skill_record.get("instances", [])) else SKILL_STATUS_DISABLED
+    else:
+        skill_record["status"] = SKILL_STATUS_DISABLED
 
 
 def active_instances(skill_record: dict[str, Any]) -> list[dict[str, Any]]:
-    return [instance for instance in skill_record.get("instances", []) if instance.get("instance_status") == "active"]
+    if not skill_is_active(skill_record):
+        return []
+    return [instance for instance in skill_record.get("instances", []) if instance_is_active(instance)]
 
 
 def remove_instance(skill_record: dict[str, Any], scope_root: str) -> dict[str, Any] | None:
@@ -225,11 +259,14 @@ def remove_instance(skill_record: dict[str, Any], scope_root: str) -> dict[str, 
         kept.append(instance)
     skill_record["instances"] = kept
     skill_record["last_verified_at"] = now_iso()
-    skill_record["status"] = "active" if active_instances(skill_record) else "archived"
+    if canonical_skill_status(skill_record.get("status")) == SKILL_STATUS_ACTIVE:
+        skill_record["status"] = SKILL_STATUS_ACTIVE if any(instance_is_active(item) for item in kept) else SKILL_STATUS_DISABLED
+    else:
+        skill_record["status"] = SKILL_STATUS_DISABLED
     return removed
 
 
-def drop_archived_skills(registry: dict[str, Any]) -> None:
+def drop_empty_skills(registry: dict[str, Any]) -> None:
     registry["skills"] = [
         skill for skill in registry.get("skills", []) if skill.get("instances")
     ]
@@ -275,7 +312,7 @@ def borrow_candidates(registry: dict[str, Any], query: str, cwd: str | Path) -> 
     candidates: list[dict[str, Any]] = []
 
     for skill in sorted(registry.get("skills", []), key=lambda item: item["skill_name"]):
-        if skill.get("status") != "active":
+        if not skill_is_active(skill):
             continue
         available_here = any(instance["scope_id"] in active_scope_ids for instance in active_instances(skill))
         if available_here:
@@ -355,7 +392,7 @@ def resolve_borrow_instance(
     skill = get_skill_record(registry, skill_name)
     if not skill:
         raise ValueError(f"Skill not found in registry: {skill_name}")
-    if skill.get("status") != "active":
+    if not skill_is_active(skill):
         raise ValueError(f"Skill is not active: {skill_name}")
 
     available_here = [instance for instance in active_instances(skill) if instance["scope_id"] in active_scope_ids]
@@ -398,8 +435,61 @@ def build_scope_block(registry: dict[str, Any], scope: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def build_global_guidance_block() -> str:
+    lines = [
+        GLOBAL_GUIDANCE_BEGIN,
+        "## Skill Scope Rules",
+        "",
+        "For global skills, fully disabling or re-enabling them requires two layers:",
+        "",
+        "- Disable path:",
+        "  Disable in `skill-scope-manager` so local scope resolution and `AGENTS.md` stop exposing it.",
+        "  Disable in Codex system settings as well if the client-level global skill list should stop surfacing it.",
+        "- Enable path:",
+        "  Enable in `skill-scope-manager` so local scope resolution and `AGENTS.md` can expose it again.",
+        "  Enable in Codex system settings as well if the client-level global skill list should surface it again.",
+        "",
+        "Newly installed or newly created skill folders are not scope-managed automatically.",
+        "When a user installs or creates a skill, remind them to run `discover --unregistered-only`, preview `register`, then rerun `register --apply`.",
+        "",
+        GLOBAL_GUIDANCE_END,
+    ]
+    return "\n".join(lines)
+
+
+def sync_global_agents_guidance(agents_path: str | Path, apply: bool) -> str:
+    agents_path = Path(agents_path)
+    if agents_path.exists() and agents_path.is_dir():
+        raise ValueError(f"AGENTS path is a directory, not a file: {normalize_path(agents_path)}")
+    existing = agents_path.read_text(encoding="utf-8") if agents_path.exists() else ""
+    block = build_global_guidance_block()
+    if GLOBAL_GUIDANCE_BEGIN in existing and GLOBAL_GUIDANCE_END in existing:
+        updated = re.sub(
+            rf"{re.escape(GLOBAL_GUIDANCE_BEGIN)}.*?{re.escape(GLOBAL_GUIDANCE_END)}",
+            block,
+            existing,
+            flags=re.S,
+        )
+    elif MANAGED_BEGIN in existing and MANAGED_END in existing:
+        updated = re.sub(
+            rf"{re.escape(MANAGED_BEGIN)}",
+            block + "\n\n" + MANAGED_BEGIN,
+            existing,
+            count=1,
+        )
+    else:
+        separator = "\n\n" if existing and not existing.endswith("\n") else "\n"
+        updated = existing + separator + block if existing else block + "\n"
+    if apply:
+        agents_path.parent.mkdir(parents=True, exist_ok=True)
+        agents_path.write_text(updated, encoding="utf-8")
+    return updated
+
+
 def sync_scope_agents(registry: dict[str, Any], scope: dict[str, Any], apply: bool) -> str:
     agents_path = Path(scope["agents_path"])
+    if agents_path.exists() and agents_path.is_dir():
+        raise ValueError(f"AGENTS path is a directory, not a file: {normalize_path(agents_path)}")
     existing = agents_path.read_text(encoding="utf-8") if agents_path.exists() else ""
     block = build_scope_block(registry, scope)
     if MANAGED_BEGIN in existing and MANAGED_END in existing:
@@ -465,8 +555,11 @@ def collect_audit_issues(registry: dict[str, Any]) -> list[dict[str, str]]:
     issues: list[dict[str, str]] = []
     registered_paths = set()
     for scope in registry.get("scopes", []):
-        if not Path(scope["agents_path"]).exists():
+        agents_path = Path(scope["agents_path"])
+        if not agents_path.exists():
             issues.append({"type": "missing_agents", "path": normalize_path(scope["agents_path"])})
+        elif agents_path.is_dir():
+            issues.append({"type": "invalid_agents_path", "path": normalize_path(scope["agents_path"])})
         if not Path(scope["skills_dir"]).exists():
             issues.append({"type": "missing_skills_dir", "path": normalize_path(scope["skills_dir"])})
     for skill in registry.get("skills", []):
@@ -480,11 +573,28 @@ def collect_audit_issues(registry: dict[str, Any]) -> list[dict[str, str]]:
             hashes.add(sha256_file(skill_md_path))
             agents_path = Path(instance["agents_path"])
             if agents_path.exists():
+                if agents_path.is_dir():
+                    issues.append(
+                        {
+                            "type": "invalid_agents_path",
+                            "skill": skill["skill_name"],
+                            "path": normalize_path(agents_path),
+                        }
+                    )
+                    continue
                 text = agents_path.read_text(encoding="utf-8")
-                if skill_md_path not in text:
+                if skill_is_active(skill) and instance_is_active(instance) and skill_md_path not in text:
                     issues.append(
                         {
                             "type": "agents_missing_reference",
+                            "skill": skill["skill_name"],
+                            "path": normalize_path(agents_path),
+                        }
+                    )
+                if (not skill_is_active(skill) or not instance_is_active(instance)) and skill_md_path in text:
+                    issues.append(
+                        {
+                            "type": "agents_stale_disabled_reference",
                             "skill": skill["skill_name"],
                             "path": normalize_path(agents_path),
                         }

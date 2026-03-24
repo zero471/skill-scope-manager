@@ -20,6 +20,7 @@ from _scope_lib import (
     parse_skill_metadata,
     save_registry,
     save_registry_markdown,
+    sync_global_agents_guidance,
     sync_scope_agents,
     upsert_instance,
 )
@@ -295,6 +296,9 @@ def print_plan_summary(plan: dict[str, Any]) -> None:
     print("- Registry actions:")
     print(f"  - write {plan['registry_path']}")
     print(f"  - render {plan['registry_markdown_path']}")
+    for scope in plan["scopes"]:
+        if scope["scope_type"] == "global":
+            print(f"  - update global AGENTS guidance in {scope['agents_path']}")
 
 
 def create_default_plan_path() -> Path:
@@ -380,6 +384,8 @@ def command_init_apply(args: argparse.Namespace) -> None:
         if not agents_path.exists():
             agents_path.parent.mkdir(parents=True, exist_ok=True)
             agents_path.write_text("", encoding="utf-8")
+        if scope["scope_type"] == "global":
+            sync_global_agents_guidance(agents_path, apply=True)
 
     for placement in plan["placements"]:
         primary_target = placement["targets"][0]
@@ -408,6 +414,8 @@ def command_init_apply(args: argparse.Namespace) -> None:
     print(f"Wrote {REGISTRY_YAML}")
     print(f"Wrote {REGISTRY_MD}")
     for scope in registry["scopes"]:
+        if scope["scope_type"] == "global":
+            print(f"Updated global guidance: {scope['agents_path']}")
         print(f"Synced: {scope['agents_path']}")
 
 

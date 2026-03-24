@@ -31,6 +31,7 @@ Another advantage of storing skills inside working directories is portability ac
 
 - initialize a scoped skill layout on a new machine
 - maintain a registry of scopes and skill instances
+- keep a lightweight global enable/disable switch for managed skills
 - query which skills are installed and where they live
 - determine which skills are active in the current path
 - detect drift between disk, registry, and `AGENTS.md`
@@ -42,10 +43,12 @@ Another advantage of storing skills inside working directories is portability ac
 - Scope-aware registry with one skill record and multiple instances
 - Separate initialization mode and daily management mode
 - Preview-first migration flow for first-run setup
+- Lightweight global enable/disable via registry state
 - Automatic creation of minimal scope structure:
   - `skills/`
   - `AGENTS.md`
   - managed block
+- Initialization writes a stable guidance block into the global `AGENTS.md`
 - Managed `AGENTS.md` syncing without overwriting non-managed content
 - One-time cross-scope borrowing without persisting approvals
 - Distributable template registry with `bootstrap_complete: false`
@@ -106,11 +109,19 @@ python scripts/skill_scope_registry.py list
 python scripts/skill_scope_registry.py where <skill-name>
 python scripts/skill_scope_registry.py here --cwd "$PWD"
 python scripts/skill_scope_registry.py audit
+python scripts/skill_scope_registry.py discover --unregistered-only
 python scripts/skill_scope_registry.py register --skill-dir <path> --scope-root <scope>
+python scripts/skill_scope_registry.py disable --skill-name <name>
+python scripts/skill_scope_registry.py enable --skill-name <name>
 python scripts/skill_scope_registry.py move --skill-name <name> --from-scope-root <src> --to-scope-root <dst>
 python scripts/skill_scope_registry.py remove --skill-name <name> --scope-root <scope>
 python scripts/skill_scope_registry.py sync-agents
 ```
+
+Notes:
+
+- newly installed or newly created skill folders are not scope-managed until `register --apply`
+- for global skills, full disable/enable also requires the corresponding change in Codex system settings
 
 ### One-time out-of-scope borrowing
 
@@ -139,6 +150,7 @@ The registry stores:
 
 - scope definitions
 - skill records
+- global skill availability state
 - multi-instance mappings for same-name skills
 - bootstrap completion state
 
@@ -170,7 +182,8 @@ This is intentionally separate from daily management so the initialization guide
 `scripts/skill_scope_registry.py` handles routine operations:
 
 - list / where / here / audit
-- register / move / remove
+- discover / register / move / remove
+- disable / enable
 - borrow-preview / borrow-resolve
 - sync-agents
 
@@ -212,6 +225,7 @@ It treats scope management as an ongoing maintenance workflow after initializati
 
 - 在新机器上初始化 scoped skill 布局
 - 维护 scope 与 skill instance 的注册表
+- 维护一个轻量的全局启用/禁用开关
 - 查询当前安装了哪些 skill、它们在哪
 - 查询当前路径下哪些 skill 处于激活状态
 - 检测磁盘、registry、`AGENTS.md` 之间的漂移
@@ -223,10 +237,12 @@ It treats scope management as an ongoing maintenance workflow after initializati
 - 支持“一个 skill 记录，对应多个 instance”的 scope registry
 - 初始化模式与日常管理模式分离
 - first-run 初始化采用 preview-first 迁移流程
+- 支持通过 registry 做轻量的全局启用/禁用
 - 自动创建最小 scope 结构：
   - `skills/`
   - `AGENTS.md`
   - managed block
+- 初始化时会把一段稳定的 guidance block 写进全局 `AGENTS.md`
 - 同步 `AGENTS.md` 时不会覆盖非受管内容
 - 支持一次性的跨 scope 借用，不持久化授权
 - 分发版本自带未初始化模板 registry
@@ -287,11 +303,19 @@ python scripts/skill_scope_registry.py list
 python scripts/skill_scope_registry.py where <skill-name>
 python scripts/skill_scope_registry.py here --cwd "$PWD"
 python scripts/skill_scope_registry.py audit
+python scripts/skill_scope_registry.py discover --unregistered-only
 python scripts/skill_scope_registry.py register --skill-dir <path> --scope-root <scope>
+python scripts/skill_scope_registry.py disable --skill-name <name>
+python scripts/skill_scope_registry.py enable --skill-name <name>
 python scripts/skill_scope_registry.py move --skill-name <name> --from-scope-root <src> --to-scope-root <dst>
 python scripts/skill_scope_registry.py remove --skill-name <name> --scope-root <scope>
 python scripts/skill_scope_registry.py sync-agents
 ```
+
+说明：
+
+- 新安装或新创建的 skill 文件夹，在 `register --apply` 前都不算 scope-managed
+- 对全局 skill 来说，完整的禁用/恢复还需要在 Codex 系统设置里做对应操作
 
 ### 一次性借用 scope 外 skill
 
@@ -320,6 +344,7 @@ registry 里保存的是：
 
 - scope 定义
 - skill 记录
+- 全局 skill 的可用状态
 - 同名 skill 的多实例映射
 - bootstrap 完成状态
 
@@ -351,7 +376,8 @@ registry 里保存的是：
 `scripts/skill_scope_registry.py` 负责日常操作：
 
 - `list / where / here / audit`
-- `register / move / remove`
+- `discover / register / move / remove`
+- `disable / enable`
 - `borrow-preview / borrow-resolve`
 - `sync-agents`
 

@@ -18,6 +18,7 @@ Always read `registry/skill-registry.yaml` first. Treat it as the authority for:
 - which skills are managed
 - which scopes exist
 - which absolute paths each skill instance uses
+- whether a skill is globally enabled or disabled
 - whether bootstrap initialization is complete
 
 Use `registry/skill-registry.md` as the human-readable table view only.
@@ -30,6 +31,7 @@ If `registry/skill-registry.yaml` does not exist, or `bootstrap_complete` is fal
 - Same skill name may exist in multiple scopes
 - A skill with multiple scoped copies is considered active in each of those scopes
 - For skill content edits, first resolve the absolute path from the registry, then edit that path
+- This skill is not a background watcher; new skill folders become managed only after `discover`/`audit`/`register`
 
 ## Commands
 
@@ -45,6 +47,8 @@ python scripts/skill_scope_registry.py borrow-preview --query <text> --cwd "$PWD
 python scripts/skill_scope_registry.py borrow-resolve --skill-name <name> --cwd "$PWD"
 python scripts/skill_scope_registry.py register --skill-dir <path> --scope-root <scope>
 python scripts/skill_scope_registry.py remove --skill-name <name> --scope-root <scope>
+python scripts/skill_scope_registry.py disable --skill-name <name>
+python scripts/skill_scope_registry.py enable --skill-name <name>
 python scripts/skill_scope_registry.py move --skill-name <name> --from-scope-root <src> --to-scope-root <dst>
 python scripts/skill_scope_registry.py sync-agents
 ```
@@ -70,6 +74,12 @@ Initialization is a separate mode. If the registry is missing or `bootstrap_comp
 2. Use `scripts/skill_scope_init.py`
 3. Do not improvise the bootstrap flow from the daily management commands
 
+During initialization, make sure the global `AGENTS.md` also gets a stable guidance block that tells the agent:
+
+- global skill disable requires both `skill-scope-manager` and Codex system settings
+- global skill re-enable requires both `skill-scope-manager` and Codex system settings
+- newly installed and newly created skills are not scope-managed until `register` is applied
+
 ### Add
 
 Use `discover --unregistered-only` to find new skills. Then:
@@ -79,6 +89,8 @@ Use `discover --unregistered-only` to find new skills. Then:
 3. Show the preview
 4. Re-run with `--apply`
 
+If a user has just created a skill, explicitly remind them that the new folder is not scope-managed until registration is applied.
+
 ### Remove
 
 Use `where <skill-name>` first.
@@ -87,6 +99,27 @@ Use `where <skill-name>` first.
 - If a skill has multiple instances, ask which scoped copy to remove
 
 Always preview first.
+
+### Disable or enable
+
+Use `disable` and `enable` for a lightweight, recoverable switch.
+
+- `disable` keeps the skill directory and registry entry intact
+- `enable` restores the skill from the same registry entry
+- Disabled state belongs in the registry, not in `AGENTS.md`
+- `AGENTS.md` should only list currently active skills
+
+When the user wants a skill fully hidden, remind them that there are two separate layers:
+
+1. Disable it in `skill-scope-manager` so local scope resolution and `AGENTS.md` stop exposing it
+2. Disable it in Codex system settings as well if they also want the client-level global skill list to stop surfacing it
+
+For global skills, the inverse is also true when re-enabling:
+
+1. Enable it in `skill-scope-manager` so local scope resolution and `AGENTS.md` can expose it again
+2. Enable it in Codex system settings as well if they also want the client-level global skill list to surface it again
+
+Use `remove` only when the user wants to delete the scoped copy itself.
 
 ### Modify
 
