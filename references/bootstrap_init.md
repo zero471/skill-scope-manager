@@ -27,20 +27,26 @@ The initialization flow must:
 
 1. Run `python scripts/skill_scope_init.py init-status`
 2. Ask the user for:
-   - Central Manager Directory
-   - List of Agent Global Skill Directories
-   - one or more current skill storage directories for discovery
-3. Run `python scripts/skill_scope_init.py init-discover --skill-dir ...`
-4. Show discovered skills with classification suggestions:
-   - `global` (and for which agent)
+   - **Central Manager Directory**
+   - **List of Agent Global Skill Directories**
+   - **Current skill storage directories** for discovery
+3. **Execute Symlinking Setup**: 
+   - Remove any existing `skill-scope-manager` in the target agent global directories
+   - Run `ln -s <Central Manager Directory> <Agent Global Skill Directory>/skill-scope-manager` for each agent
+4. **Register the Global Scopes**:
+   - For each agent, run `python scripts/skill_scope_registry.py register --skill-dir <Central Manager Directory> --scope-root <Agent Root> --scope-type global --apply`
+   - Rename the generic `global` or generated `scope_id` in `registry/skill-registry.yaml` to an isolated name like `codex_global`, `opencode_global`, etc.
+5. Run `python scripts/skill_scope_init.py init-discover --skill-dir ...` to find remaining skills.
+6. Show discovered skills with classification suggestions:
+   - `global` (and for which agent's global scope)
    - `local`
    - `multi-scope copy`
-5. Ask the user to confirm a placement decision for every discovered skill
-6. For every `local` or `multi-scope copy` decision, require explicit `scope_root` paths
-7. Write a decision file
-8. Run `init-preview`
-9. Show the preview to the user
-10. Apply only after explicit confirmation with `init-apply` (which sets up the symlinks, registry entries, and updates AGENTS.md for each agent).
+7. Ask the user to confirm a placement decision for every discovered skill.
+8. For every `local` or `multi-scope copy` decision, require explicit `scope_root` paths.
+9. Write a decision file.
+10. Run `init-preview`
+11. Show the preview to the user.
+12. Apply only after explicit confirmation with `init-apply`.
 
 ## Centralized Symlink Setup
 
