@@ -55,18 +55,27 @@ Another advantage of storing skills inside working directories is portability ac
 
 ## Installation
 
-This repository is the skill folder itself.
+This repository is the skill folder itself. We recommend installing it in a **centralized directory** and symlinking it to your agents so that multiple agents (e.g. Codex, OpenCode) can share the same registry.
 
-1. Clone the repository.
-2. Copy `skill-scope-manager/` into your agent skill home. The target path should be provided by the user based on their own agent environment, for example:
+1. Clone the repository into a fixed, central location:
 
 ```bash
-git clone <repo-url>
-cp -R skill-scope-manager "<agent-skill-home>/skill-scope-manager"
+git clone <repo-url> ~/Vscode/SKILL/skill-scope-manager
+```
+
+2. Create symlinks from your various agent global skill directories to this central manager:
+
+```bash
+# Example for Codex
+ln -s ~/Vscode/SKILL/skill-scope-manager ~/.codex/skills/skill-scope-manager
+
+# Example for OpenCode
+ln -s ~/Vscode/SKILL/skill-scope-manager ~/.config/opencode/skills/skill-scope-manager
 ```
 
 3. Declare the skill in the skill manifest used by your agent, such as `AGENTS.md` if your agent supports it.
-4. Restart or reload your agent runtime so the new skill metadata is loaded.
+4. Run the initialization flow (see below) to create isolated global scopes for each agent while maintaining a single, shared registry file.
+5. Restart or reload your agent runtime so the new skill metadata is loaded.
 
 Notes:
 
@@ -249,18 +258,27 @@ It treats scope management as an ongoing maintenance workflow after initializati
 
 ## 如何安装
 
-这个仓库本身就是 skill 目录。
+这个仓库本身就是 skill 目录。我们强烈建议将它安装在**集中的固定目录**，然后通过软链接（symlink）的方式分发给不同的 agent，这样不同的 agent（如 Codex, OpenCode）就能共享同一个 registry。
 
-1. 克隆仓库
-2. 将 `skill-scope-manager/` 复制到你的 agent skill home。目标路径应由用户根据自己的 agent 环境提供，例如：
+1. 将仓库克隆到一个集中的固定位置：
 
 ```bash
-git clone <repo-url>
-cp -R skill-scope-manager "<agent-skill-home>/skill-scope-manager"
+git clone <repo-url> ~/Vscode/SKILL/skill-scope-manager
+```
+
+2. 为你需要使用的各种 agent 的全局 skill 目录创建指向该集中管理器的软链接：
+
+```bash
+# 以 Codex 为例
+ln -s ~/Vscode/SKILL/skill-scope-manager ~/.codex/skills/skill-scope-manager
+
+# 以 OpenCode 为例
+ln -s ~/Vscode/SKILL/skill-scope-manager ~/.config/opencode/skills/skill-scope-manager
 ```
 
 3. 在你的 agent 使用的 skill manifest 中声明这个 skill；如果该 agent 支持 `AGENTS.md`，就写入对应的 `AGENTS.md`
-4. 重启或重新加载 agent runtime，让新的 skill metadata 生效
+4. 运行初始化流程（见下文），为每个 agent 隔离出独立的 global scope，同时又能共享同一个本地 registry 文件。
+5. 重启或重新加载 agent runtime，让新的 skill metadata 生效
 
 说明：
 
