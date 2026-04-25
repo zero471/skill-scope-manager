@@ -32,6 +32,7 @@ If `registry/skill-registry.yaml` does not exist, or `bootstrap_complete` is fal
 - A skill with multiple scoped copies is considered active in each of those scopes
 - For skill content edits, first resolve the absolute path from the registry, then edit that path
 - This skill is not a background watcher; new skill folders become managed only after `discover`/`audit`/`register`
+- **Important**: Whenever the skill registry or related skill components are modified, you MUST commit the changes to the git repository located in this skill's directory (`/Users/tmyz/.config/opencode/skills/skill-scope-manager`).
 
 ## Commands
 
@@ -71,8 +72,11 @@ python scripts/skill_scope_init.py init-apply --plan-file <file>
 Initialization is a separate mode. If the registry is missing or `bootstrap_complete` is false:
 
 1. Read `references/bootstrap_init.md`
-2. Use `scripts/skill_scope_init.py`
-3. Do not improvise the bootstrap flow from the daily management commands
+2. Determine the central fixed path where `skill-scope-manager` should be permanently stored (e.g. `~/Vscode/SKILL/skill-scope-manager`)
+3. Determine all target agent global directories (e.g. `~/.codex/skills`, `~/.config/opencode/skills`)
+4. Create symlinks from each agent directory pointing back to the central path
+5. Use `scripts/skill_scope_init.py` to bootstrap the registry, creating independent global scopes (e.g., `codex_global`, `opencode_global`) to isolate each agent's global skills while sharing the same central registry file.
+6. Do not improvise the bootstrap flow from the daily management commands
 
 During initialization, make sure the global `AGENTS.md` also gets a stable guidance block that tells the agent:
 

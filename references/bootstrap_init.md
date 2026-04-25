@@ -9,13 +9,17 @@ Do not load this file during normal daily skill management.
 
 ## Goal
 
-Initialize a scoped agent skill layout for a user who has not yet set up a registry.
+Initialize a centralized scoped agent skill layout for a user who has not yet set up a registry.
 
 The initialization flow must:
 
-- use user-provided current skill storage directories
-- ask the user to provide an explicit global root
-- ask the user to provide explicit local scope roots
+- prompt the user for the **Central Manager Directory** (a fixed, centralized path where `skill-scope-manager` itself should reside, e.g. `~/Vscode/SKILL/skill-scope-manager`).
+- ask the user to provide a list of **Agent Global Skill Directories** (e.g. `~/.codex/skills`, `~/.config/opencode/skills`).
+- establish symlinks from each of the Agent Global Skill Directories pointing back to the Central Manager Directory, ensuring a single source of truth across all agents.
+- create distinct `global` scopes in the registry for each agent (e.g., `codex_global` mapped to `~/.codex`, `opencode_global` mapped to `~/.config/opencode`).
+- register the manager itself into these new global scopes.
+- use user-provided current skill storage directories to discover existing skills
+- ask the user to provide explicit local scope roots for other skills
 - generate a preview plan before making changes
 - apply only the exact previewed plan
 
@@ -23,11 +27,12 @@ The initialization flow must:
 
 1. Run `python scripts/skill_scope_init.py init-status`
 2. Ask the user for:
-   - one explicit global root
-   - one or more current skill storage directories
+   - Central Manager Directory
+   - List of Agent Global Skill Directories
+   - one or more current skill storage directories for discovery
 3. Run `python scripts/skill_scope_init.py init-discover --skill-dir ...`
 4. Show discovered skills with classification suggestions:
-   - `global`
+   - `global` (and for which agent)
    - `local`
    - `multi-scope copy`
 5. Ask the user to confirm a placement decision for every discovered skill
@@ -35,13 +40,20 @@ The initialization flow must:
 7. Write a decision file
 8. Run `init-preview`
 9. Show the preview to the user
-10. Apply only after explicit confirmation with `init-apply`
+10. Apply only after explicit confirmation with `init-apply` (which sets up the symlinks, registry entries, and updates AGENTS.md for each agent).
+
+## Centralized Symlink Setup
+
+The initialization tool must create symlinks automatically. For example, if the central path is `~/Vscode/SKILL/skill-scope-manager` and the target is `~/.codex/skills`:
+- Remove any existing `~/.codex/skills/skill-scope-manager`
+- Create symlink: `ln -s ~/Vscode/SKILL/skill-scope-manager ~/.codex/skills/skill-scope-manager`
 
 ## Decision file
 
 The decision file must contain:
 
-- `global_root`
+- `central_manager_dir`
+- `agent_global_roots` (a list of agent root paths, e.g. `~/.codex`, `~/.config/opencode`)
 - `source_skill_dirs`
 - `placements`
 
