@@ -1,3 +1,5 @@
+
+
 # Skill Scope Manager
 
 Manage skill scope, initialization, migration preview, and one-time cross-scope skill borrowing for agent workspaces.
@@ -91,7 +93,7 @@ For most users, the simplest way to initialize this skill is:
 1. invoke `skill-scope-manager`
 2. tell the agent to initialize skill scope management for the current environment
 
-The agent should then guide the user through discovery, scope decisions, preview, and apply.
+The agent should then guide the user through discovery, scope decisions, preview, and apply. (During this flow, it will automatically reference `references/bootstrap_init.md` to ensure symlinks and scopes are set up correctly.)
 
 The commands below are the manual interface behind that guided flow, and are useful if you want to run initialization step by step yourself:
 
